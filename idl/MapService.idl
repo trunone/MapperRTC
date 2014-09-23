@@ -1,0 +1,8 @@
+module Map
+{
+    interface SimpleMap
+    {
+        void getMap(out string arg);
+    };
+};
+

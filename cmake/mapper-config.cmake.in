@@ -1,0 +1,54 @@
+# Mapper CMake config file
+#
+# This file sets the following variables:
+# Mapper_FOUND - Always TRUE.
+# Mapper_INCLUDE_DIRS - Directories containing the Mapper include files.
+# Mapper_IDL_DIRS - Directories containing the Mapper IDL files.
+# Mapper_LIBRARIES - Libraries needed to use Mapper.
+# Mapper_DEFINITIONS - Compiler flags for Mapper.
+# Mapper_VERSION - The version of Mapper found.
+# Mapper_VERSION_MAJOR - The major version of Mapper found.
+# Mapper_VERSION_MINOR - The minor version of Mapper found.
+# Mapper_VERSION_REVISION - The revision version of Mapper found.
+# Mapper_VERSION_CANDIDATE - The candidate version of Mapper found.
+
+message(STATUS "Found Mapper-@PROJECT_VERSION@")
+set(Mapper_FOUND TRUE)
+
+find_package(<dependency> REQUIRED)
+
+#set(Mapper_INCLUDE_DIRS
+#    "@CMAKE_INSTALL_PREFIX@/include/@PROJECT_NAME_LOWER@-@PROJECT_VERSION_MAJOR@"
+#    ${<dependency>_INCLUDE_DIRS}
+#    )
+#
+#set(Mapper_IDL_DIRS
+#    "@CMAKE_INSTALL_PREFIX@/include/@PROJECT_NAME_LOWER@-@PROJECT_VERSION_MAJOR@/idl")
+set(Mapper_INCLUDE_DIRS
+    "@CMAKE_INSTALL_PREFIX@/include/@CPACK_PACKAGE_FILE_NAME@"
+    ${<dependency>_INCLUDE_DIRS}
+    )
+set(Mapper_IDL_DIRS
+    "@CMAKE_INSTALL_PREFIX@/include/@CPACK_PACKAGE_FILE_NAME@/idl")
+
+
+if(WIN32)
+    set(Mapper_LIBRARIES
+        "@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/@CMAKE_SHARED_LIBRARY_PREFIX@@PROJECT_NAME_LOWER@@CMAKE_STATIC_LIBRARY_SUFFIX@"
+        ${<dependency>_LIBRARIES}
+        )
+else(WIN32)
+    set(Mapper_LIBRARIES
+        "@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/@CMAKE_SHARED_LIBRARY_PREFIX@@PROJECT_NAME_LOWER@@CMAKE_SHARED_LIBRARY_SUFFIX@"
+        ${<dependency>_LIBRARIES}
+        )
+endif(WIN32)
+
+set(Mapper_DEFINITIONS ${<dependency>_DEFINITIONS})
+
+set(Mapper_VERSION @PROJECT_VERSION@)
+set(Mapper_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
+set(Mapper_VERSION_MINOR @PROJECT_VERSION_MINOR@)
+set(Mapper_VERSION_REVISION @PROJECT_VERSION_REVISION@)
+set(Mapper_VERSION_CANDIDATE @PROJECT_VERSION_CANDIDATE@)
+
