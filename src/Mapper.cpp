@@ -45,7 +45,7 @@ Mapper::Mapper(RTC::Manager* manager)
     m_OdometryIn("odometry", m_Odometry),
     m_RangeDataIn("rangeData", m_RangeData),
     m_EstPoseOut("estPose", m_EstPose),
-    m_ProviderPortPort("ProviderPort")
+    m_mapPort("map")
 
     // </rtc-template>
 {
@@ -72,12 +72,12 @@ RTC::ReturnCode_t Mapper::onInitialize()
   addOutPort("estPose", m_EstPoseOut);
   
   // Set service provider to Ports
-  m_ProviderPortPort.registerProvider("simpleMap", "Map::SimpleMap", m_simpleMap);
+  m_mapPort.registerProvider("simpleMap", "Map::SimpleMap", m_simpleMap);
   
   // Set service consumers to Ports
   
   // Set CORBA Service Ports
-  addPort(m_ProviderPortPort);
+  addPort(m_mapPort);
   
   // </rtc-template>
 

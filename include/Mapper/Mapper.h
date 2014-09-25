@@ -268,7 +268,7 @@ class Mapper
   // <rtc-template block="corbaport_declare">
   /*!
    */
-  RTC::CorbaPort m_ProviderPortPort;
+  RTC::CorbaPort m_mapPort;
   
   // </rtc-template>
 
