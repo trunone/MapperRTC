@@ -86,9 +86,10 @@ RTC::ReturnCode_t Mapper::onInitialize()
   bindParameter("Direction", m_Direction, "1");
   bindParameter("Aperture", m_Aperture, "240.0");
   // </rtc-template>
-
-    now_x = 0.0; now_y = 0.0; now_theta = 0.0;
-	past_x = 0.0; past_y = 0.0; past_theta = 0.0;
+    
+    past_pose_.position.x = 0;
+    past_pose_.position.y = 0;;
+    past_pose_.heading = 0;
 
   return RTC::RTC_OK;
 }
@@ -118,7 +119,7 @@ RTC::ReturnCode_t Mapper::onShutdown(RTC::UniqueId ec_id)
 RTC::ReturnCode_t Mapper::onActivated(RTC::UniqueId ec_id)
 {
     MapBuilder::get_instance()->InitMapping();
-	firstloop = true;
+	first_run_ = true;
 
   return RTC::RTC_OK;
 }
@@ -134,33 +135,27 @@ RTC::ReturnCode_t Mapper::onDeactivated(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t Mapper::onExecute(RTC::UniqueId ec_id)
 {
-	//Sleep(300);
-
-	// ------------------------------------------------------------------------
-	//                           Rawlog
-	// ------------------------------------------------------------------------
 	CActionCollection action_collection;
 	CSensoryFrame  sensory_frame;
 
 	// Odometry
 	if(m_OdometryIn.isNew()){
 		m_OdometryIn.read();
-		now_x = m_Odometry.data.position.x;
-		now_y = m_Odometry.data.position.y;
-		now_theta = m_Odometry.data.heading;
 
-		if(firstloop == true){
-			past_x = now_x; past_y = now_y; past_theta = now_theta;
-			firstloop = false;
+		if(first_run_ == true){
+            past_pose_ = m_Odometry.data;
+			first_run_ = false;
 		}
 
-		double x = (now_x-past_x)*cos(-past_theta)-(now_y-past_y)*sin(-past_theta);
-		double y = (now_x-past_x)*sin(-past_theta)+(now_y-past_y)*cos(-past_theta);
-		double theta = now_theta-past_theta;
+		double x = (m_Odometry.data.position.x-past_pose_.position.x)*cos(-past_pose_.heading)
+            -(m_Odometry.data.position.y-past_pose_.position.y)*sin(-past_pose_.heading);
+		double y = (m_Odometry.data.position.x-past_pose_.position.x)*sin(-past_pose_.heading)
+            +(m_Odometry.data.position.y-past_pose_.position.y)*cos(-past_pose_.heading);
+		double theta = m_Odometry.data.heading-past_pose_.heading;
 
 		CPose2D pos(x, y, theta);
 		CActionRobotMovement2D movement2d;
-		CActionRobotMovement2D::TMotionModelOptions	options;
+		CActionRobotMovement2D::TMotionModelOptions options;
 		movement2d.computeFromOdometry(pos, options);
         movement2d.timestamp = mrpt::system::getCurrentTime();
 		action_collection.insert(movement2d);
@@ -180,16 +175,14 @@ RTC::ReturnCode_t Mapper::onExecute(RTC::UniqueId ec_id)
 		obs2d->scan.resize(m_RangeData.ranges.length());
 		obs2d->timestamp = mrpt::system::getCurrentTime();
 		obs2d->scan.resize(m_RangeData.ranges.length());
-		for(int i=0; i<m_RangeData.ranges.length(); i++) {
+		for(unsigned int i=0; i<m_RangeData.ranges.length(); i++) {
 			obs2d->scan[i] = (float)m_RangeData.ranges[i];
 			obs2d->validRange[i] = 1;
 		}
-		sensory_frame.insert(obs2d);  // memory of "obs2d" will be automatically freed.
+		sensory_frame.insert(obs2d);
 	}
 
-	past_x = now_x;
-	past_y = now_y;
-	past_theta = now_theta;
+    past_pose_ = m_Odometry.data;
 
     MapBuilder::get_instance()->StartMapping(action_collection, sensory_frame);
   

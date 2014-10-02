@@ -294,9 +294,9 @@ class Mapper
   
   // </rtc-template>
 
-	double now_x, now_y, now_theta;
-	double past_x, past_y, past_theta;
-	bool firstloop;
+    RTC::Pose2D past_pose_;
+
+	bool first_run_;
 
 };
 
