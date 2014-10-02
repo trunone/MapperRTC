@@ -26,7 +26,7 @@ static const char* mapper_spec[] =
     "lang_type",         "compile",
     // Configuration variables
     "conf.default.Direction", "1",
-    "conf.default.Aperture", "240.0",
+    "conf.default.Aperture", "180.0",
     // Widget
     "conf.__widget__.Direction", "text",
     "conf.__widget__.Aperture", "text",
@@ -162,8 +162,7 @@ RTC::ReturnCode_t Mapper::onExecute(RTC::UniqueId ec_id)
 		CActionRobotMovement2D movement2d;
 		CActionRobotMovement2D::TMotionModelOptions	options;
 		movement2d.computeFromOdometry(pos, options);
-		mrpt::system::TTimeStamp AtD0 = mrpt::system::getCurrentTime();
-		movement2d.timestamp = AtD0;
+        movement2d.timestamp = mrpt::system::getCurrentTime();
 		action_collection.insert(movement2d);
 	}
 
@@ -171,19 +170,17 @@ RTC::ReturnCode_t Mapper::onExecute(RTC::UniqueId ec_id)
 	if(m_RangeDataIn.isNew()){
 		m_RangeDataIn.read();
 		CObservation2DRangeScanPtr obs2d = CObservation2DRangeScan::Create();
-		int SCANS_SIZE = m_RangeData.ranges.length();
 		obs2d->aperture = m_Aperture * M_PIf / 180.0;
 		if(m_Direction == 1)
 			obs2d->rightToLeft = true;
 		else
 			obs2d->rightToLeft = false;
 		//obs2d->maxRange = 40;
-		obs2d->validRange.resize(SCANS_SIZE);
-		obs2d->scan.resize(SCANS_SIZE);
-		mrpt::system::TTimeStamp AtD1	=  mrpt::system::getCurrentTime();
-		obs2d->timestamp = AtD1;
-		obs2d->scan.resize(SCANS_SIZE);
-		for(int i=0; i<SCANS_SIZE; i++) {
+		obs2d->validRange.resize(m_RangeData.ranges.length());
+		obs2d->scan.resize(m_RangeData.ranges.length());
+		obs2d->timestamp = mrpt::system::getCurrentTime();
+		obs2d->scan.resize(m_RangeData.ranges.length());
+		for(int i=0; i<m_RangeData.ranges.length(); i++) {
 			obs2d->scan[i] = (float)m_RangeData.ranges[i];
 			obs2d->validRange[i] = 1;
 		}
