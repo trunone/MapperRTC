@@ -31,10 +31,7 @@ void SimpleMapSVC_impl::getMap(CORBA::String_out arg)
     CSimpleMap map;
     MapBuilder::get_instance()->get_map(map);
 
-    //std::string str = ObjectToString(new CSerializable(map));
-
-    //arg = CORBA::string_dup(str.c_str());
-    arg = CORBA::string_dup("Test");
+    arg = CORBA::string_dup(ObjectToString(&map).c_str());
 }
 
 

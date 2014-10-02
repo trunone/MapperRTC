@@ -92,10 +92,6 @@ bool MapBuilder::StopMapping() {
 	// Save map:
 	map_builder_icp.getCurrentlyBuiltMap(finalMap);
 
-    COccupancyGridMap2D picture;
-    picture.loadFromSimpleMap(finalMap);
-    picture.saveAsBitmapFile("test.bmp");
-
 	str = format("%s/_finalmap_.simplemap",OUT_DIR);
 	printf("Dumping final map in binary format to: %s\n", str.c_str() );
 	map_builder_icp.saveCurrentMapToFile(str);
@@ -236,9 +232,8 @@ bool MapBuilder::StartMapping(
 }
 
 bool MapBuilder::get_map(CSimpleMap& map) {
-    //map_builder_icp.getCurrentlyBuiltMap(map);
 
-    map_builder_icp.saveCurrentMapToFile("/tmp/icp_tmp.simplemap", false);
+    map_builder_icp.getCurrentlyBuiltMap(map);
 
     return false;
 }
