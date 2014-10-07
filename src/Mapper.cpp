@@ -87,9 +87,6 @@ RTC::ReturnCode_t Mapper::onInitialize()
   bindParameter("Aperture", m_Aperture, "240.0");
   // </rtc-template>
     
-    past_pose_.position.x = 0;
-    past_pose_.position.y = 0;;
-    past_pose_.heading = 0;
 
   return RTC::RTC_OK;
 }
@@ -119,6 +116,9 @@ RTC::ReturnCode_t Mapper::onShutdown(RTC::UniqueId ec_id)
 RTC::ReturnCode_t Mapper::onActivated(RTC::UniqueId ec_id)
 {
     MapBuilder::get_instance()->InitMapping();
+    past_pose_.position.x = 0;
+    past_pose_.position.y = 0;;
+    past_pose_.heading = 0;
 	first_run_ = true;
 
   return RTC::RTC_OK;

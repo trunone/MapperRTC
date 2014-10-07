@@ -1,114 +1,84 @@
 #include "MapBuilder.h"
 
-MapBuilder *MapBuilder::unique_instance = new MapBuilder();
+#define SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS 5
+#define SHOW_PROGRESS_3D_REAL_TIME true
+#define CAMERA_3DSCENE_FOLLOWS_ROBOT true
+#define SAVE_3D_SCENE false
+#define LOG_FREQUENCY 5
+
+MapBuilder *MapBuilder::unique_instance_ = new MapBuilder();
 
 MapBuilder::MapBuilder() {
-
-	// -----------------------------------------------------------------------------------
-	//            MRPT
-	// -----------------------------------------------------------------------------------
-	CConfigFile				iniFile("icp-slam.ini");
-
-	// ------------------------------------------
-	//			Load config from file:
-	// ------------------------------------------
-	rawlog_offset		 = iniFile.read_int("MappingApplication","rawlog_offset",0,  /*Force existence:*/ true);
-	OUT_DIR_STD			 = iniFile.read_string("MappingApplication","logOutput_dir","log_out",  /*Force existence:*/ true);
-	LOG_FREQUENCY		 = iniFile.read_int("MappingApplication","LOG_FREQUENCY",5,  /*Force existence:*/ true);
-	SAVE_POSE_LOG		 = iniFile.read_bool("MappingApplication","SAVE_POSE_LOG", false,  /*Force existence:*/ true);
-	SAVE_3D_SCENE        = iniFile.read_bool("MappingApplication","SAVE_3D_SCENE", false,  /*Force existence:*/ true);
-	CAMERA_3DSCENE_FOLLOWS_ROBOT = iniFile.read_bool("MappingApplication","CAMERA_3DSCENE_FOLLOWS_ROBOT", true,  /*Force existence:*/ true);
-
-	SHOW_PROGRESS_3D_REAL_TIME = false;
-	SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS = 0;
-
-	MRPT_LOAD_CONFIG_VAR( SHOW_PROGRESS_3D_REAL_TIME, bool,  iniFile, "MappingApplication");
-	MRPT_LOAD_CONFIG_VAR( SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS, int, iniFile, "MappingApplication");
-
-	OUT_DIR = OUT_DIR_STD.c_str();
-
-	// ------------------------------------
-	//		Constructor of ICP-SLAM object
-	// ------------------------------------
-	map_builder_icp.ICP_options.loadFromConfigFile( iniFile, "MappingApplication");
-	map_builder_icp.ICP_params.loadFromConfigFile ( iniFile, "ICP");
-
-	// Construct the maps with the loaded configuration.
-	map_builder_icp.initialize();
-
-
-	// ---------------------------------
-	//   CMetricMapBuilder::TOptions
-	// ---------------------------------
-	map_builder_icp.options.verbose = true;
-	map_builder_icp.options.alwaysInsertByClass.fromString( iniFile.read_string("MappingApplication","alwaysInsertByClass","") );
-
-
-	// Print params:
-//	printf("Running with the following parameters:\n");
-//	printf(" Output directory:\t\t\t'%s'\n",OUT_DIR);
-//	printf(" matchAgainstTheGrid:\t\t\t%c\n", map_builder_icp.ICP_options.matchAgainstTheGrid ? 'Y':'N');
-//	printf(" Log record freq:\t\t\t%u\n",LOG_FREQUENCY);
-//	printf("  SAVE_3D_SCENE:\t\t\t%c\n", SAVE_3D_SCENE ? 'Y':'N');
-//	printf("  SAVE_POSE_LOG:\t\t\t%c\n", SAVE_POSE_LOG ? 'Y':'N');
-//	printf("  CAMERA_3DSCENE_FOLLOWS_ROBOT:\t%c\n",CAMERA_3DSCENE_FOLLOWS_ROBOT ? 'Y':'N');
-//
-//	printf("\n");
-
-	map_builder_icp.ICP_params.dumpToConsole();
-	map_builder_icp.ICP_options.dumpToConsole();
-
-	// Prepare output directory:
-	// --------------------------------
-	deleteFilesInDirectory(OUT_DIR);
-	createDirectory(OUT_DIR);
-
-	// Checks:
-	step = 0;
-
-	// Open log files:
-	// ----------------------------------
-	f_log.open(format("%s/log_times.txt",OUT_DIR));
-	f_path.open(format("%s/log_estimated_path.txt",OUT_DIR));
-	f_pathOdo.open(format("%s/log_odometry_path.txt",OUT_DIR));
-
-	// Create 3D window if requested:
-#if MRPT_HAS_WXWIDGETS
-	if (SHOW_PROGRESS_3D_REAL_TIME)
-	{
-		win3D = CDisplayWindow3D::Create("ICP-SLAM @ MRPT C++ Library", 600, 500);
-		win3D->setCameraZoom(20);
-		win3D->setCameraAzimuthDeg(-45);
-	}
-#endif
 }
 
 bool MapBuilder::StopMapping() {
-    outputFile.close();
-	f_log.close();
-	f_path.close();
-	f_pathOdo.close();
 
-	// Save map:
-	map_builder_icp.getCurrentlyBuiltMap(finalMap);
-
-	str = format("%s/_finalmap_.simplemap",OUT_DIR);
-	printf("Dumping final map in binary format to: %s\n", str.c_str() );
-	map_builder_icp.saveCurrentMapToFile(str);
-
-	CMultiMetricMap  *finalPointsMap = map_builder_icp.getCurrentlyBuiltMetricMap();
-	str = format("%s/_finalmaps_.txt",OUT_DIR);
-	printf("Dumping final metric maps to %s_XXX\n", str.c_str() );
-	finalPointsMap->saveMetricMapRepresentationToFile( str );
-
-	map_builder_icp.clear();
+	map_builder_icp_.clear();
 
     return false;
 }
 
 bool MapBuilder::InitMapping() {
-	// Rawlog
-	outputFile.open(format("%s/dataset.rawlog",OUT_DIR));
+    // ICP algorithm params
+    map_builder_icp_.ICP_params.maxIterations                   = 80;
+    map_builder_icp_.ICP_params.minAbsStep_trans                = 1e-6;
+    map_builder_icp_.ICP_params.minAbsStep_rot                  = 1e-6;
+    map_builder_icp_.ICP_params.thresholdDist                   = 0.3;
+    map_builder_icp_.ICP_params.thresholdAng                    = DEG2RAD(5.0);
+    map_builder_icp_.ICP_params.ALFA                            = 0.8;
+    map_builder_icp_.ICP_params.smallestThresholdDist           = 0.05;
+    map_builder_icp_.ICP_params.onlyClosestCorrespondences      = true;
+    map_builder_icp_.ICP_params.ICP_algorithm                   = icpClassic;
+    map_builder_icp_.ICP_params.corresponding_points_decimation = 5;
+
+    // ICP application options
+    map_builder_icp_.ICP_options.localizationLinDistance = 0.2;
+    map_builder_icp_.ICP_options.localizationAngDistance = 5;
+    map_builder_icp_.ICP_options.insertionLinDistance    = 1.2;
+    map_builder_icp_.ICP_options.insertionAngDistance    = 45.0;
+    map_builder_icp_.ICP_options.minICPgoodnessToAccept  = 0.40;
+    map_builder_icp_.ICP_options.matchAgainstTheGrid     = 0;
+
+    //map_builder_icp_.ICP_options.mapInitializers.options.occupancyGrid_count=0;
+    //map_builder_icp_.ICP_options.mapInitializers.options.gasGrid_count=0;
+    //map_builder_icp_.ICP_options.mapInitializers.options.landmarksMap_count=0;
+    //map_builder_icp_.ICP_options.mapInitializers.options.beaconMap_count=0;
+    //map_builder_icp_.ICP_options.mapInitializers.options.pointsMap_count=1;
+
+    map_builder_icp_.ICP_options.mapInitializers.options.likelihoodMapSelection =
+            CMultiMetricMap::TOptions::mapFuseAll;
+
+    TMetricMapInitializer map_init;
+
+    map_init.metricMapClassType = CLASS_ID(CSimplePointsMap);
+    map_init.pointsMapOptions_options.insertionOpts.minDistBetweenLaserPoints = 0.05;
+    map_init.pointsMapOptions_options.insertionOpts.fuseWithExisting = false;
+    map_init.pointsMapOptions_options.insertionOpts.isPlanarMap = 1;
+
+    map_builder_icp_.ICP_options.mapInitializers.push_back(map_init);
+
+	// Construct the maps with the loaded configuration.
+	map_builder_icp_.initialize();
+
+    // Debug Info.
+	map_builder_icp_.options.verbose = true;
+	map_builder_icp_.options.alwaysInsertByClass.fromString("");
+
+	map_builder_icp_.ICP_params.dumpToConsole();
+	map_builder_icp_.ICP_options.dumpToConsole();
+
+	// Checks:
+	step_ = 0;
+
+	// Create 3D window if requested:
+#if MRPT_HAS_WXWIDGETS
+	if (SHOW_PROGRESS_3D_REAL_TIME)
+	{
+		win3d_ptr_ = CDisplayWindow3D::Create("ICP-SLAM @ MRPT C++ Library", 600, 500);
+		win3d_ptr_->setCameraZoom(20);
+		win3d_ptr_->setCameraAzimuthDeg(-45);
+	}
+#endif
 
     return false;
 }
@@ -117,26 +87,14 @@ bool MapBuilder::StartMapping(
         CActionCollection action_collection,
         CSensoryFrame sensory_frame
 ) {
-    // ----------------------------------------------------------
-    //						Map Building
-    // ----------------------------------------------------------
-	CPose2D	odoPose(0,0,0);
-
-	// Execute:
-	// ----------------------------------------
-	map_builder_icp.processActionObservation( action_collection, sensory_frame );
-
-	// Info log:
-	// -----------
-	f_log.printf("%f %i\n",1000.0f*t_exec,map_builder_icp.getCurrentlyBuiltMapSize() );
-
-	const CMultiMetricMap* mostLikMap =  map_builder_icp.getCurrentlyBuiltMetricMap();
+    // Building map
+	map_builder_icp_.processActionObservation( action_collection, sensory_frame );
 
 	// Save a 3D scene view of the mapping process:
-	if (0==(step % LOG_FREQUENCY) || (SAVE_3D_SCENE || win3D.present()))
+	if (0==(step_ % LOG_FREQUENCY) || (SAVE_3D_SCENE || win3d_ptr_.present()))
 	{
 		CPose3D robotPose;
-		map_builder_icp.getCurrentPoseEstimation()->getMean(robotPose);
+		map_builder_icp_.getCurrentPoseEstimation()->getMean(robotPose);
 
 		COpenGLScenePtr		scene = COpenGLScene::Create();
 
@@ -177,20 +135,20 @@ bool MapBuilder::StartMapping(
 		// The maps:
 		{
 			opengl::CSetOfObjectsPtr obj = opengl::CSetOfObjects::Create();
-			mostLikMap->getAs3DObject( obj );
+			map_builder_icp_.getCurrentlyBuiltMetricMap()->getAs3DObject( obj );
 			view->insert(obj);
 
 			// Only the point map:
 			opengl::CSetOfObjectsPtr ptsMap = opengl::CSetOfObjects::Create();
-			if (mostLikMap->m_pointsMaps.size())
+			if (map_builder_icp_.getCurrentlyBuiltMetricMap()->m_pointsMaps.size())
 			{
-				mostLikMap->m_pointsMaps[0]->getAs3DObject(ptsMap);
+				map_builder_icp_.getCurrentlyBuiltMetricMap()->m_pointsMaps[0]->getAs3DObject(ptsMap);
 				view_map->insert( ptsMap );
 			}
 		}
 
 		// Draw the robot path:
-		CPose3DPDFPtr posePDF =  map_builder_icp.getCurrentPoseEstimation();
+		CPose3DPDFPtr posePDF =  map_builder_icp_.getCurrentPoseEstimation();
 		CPose3D  curRobotPose;
 		posePDF->getMean(curRobotPose);
 		{
@@ -205,35 +163,35 @@ bool MapBuilder::StartMapping(
 		}
 
 		// Show 3D?
-		if (win3D)
+		if (win3d_ptr_)
 		{
-			opengl::COpenGLScenePtr &ptrScene = win3D->get3DSceneAndLock();
+			opengl::COpenGLScenePtr &ptrScene = win3d_ptr_->get3DSceneAndLock();
 			ptrScene = scene;
 
-			win3D->unlockAccess3DScene();
+			win3d_ptr_->unlockAccess3DScene();
 
 			// Move camera:
-			win3D->setCameraPointingToPoint( curRobotPose.x(),curRobotPose.y(),curRobotPose.z() );
+			win3d_ptr_->setCameraPointingToPoint( curRobotPose.x(),curRobotPose.y(),curRobotPose.z() );
 
 			// Update:
-			win3D->forceRepaint();
+			win3d_ptr_->forceRepaint();
 
 			sleep( SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS );
 		}
 	}
 
-    est_x = map_builder_icp.getCurrentPoseEstimation()->getMeanVal().x();
-    est_y = map_builder_icp.getCurrentPoseEstimation()->getMeanVal().y();
-    est_th = map_builder_icp.getCurrentPoseEstimation()->getMeanVal().yaw();
+    est_x_ = map_builder_icp_.getCurrentPoseEstimation()->getMeanVal().x();
+    est_y_ = map_builder_icp_.getCurrentPoseEstimation()->getMeanVal().y();
+    est_th_ = map_builder_icp_.getCurrentPoseEstimation()->getMeanVal().yaw();
 
-	step++;
+	step_++;
 
     return false;
 }
 
 bool MapBuilder::get_map(CSimpleMap& map) {
 
-    map_builder_icp.getCurrentlyBuiltMap(map);
+    map_builder_icp_.getCurrentlyBuiltMap(map);
 
     return false;
 }

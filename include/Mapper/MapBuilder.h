@@ -16,59 +16,30 @@ class MapBuilder
 {
 public:
     MapBuilder();
-    static MapBuilder* get_instance() { return unique_instance; }
+    static MapBuilder* get_instance() { return unique_instance_; }
     ~MapBuilder();
 
     bool InitMapping();
     bool StopMapping();
     bool StartMapping(CActionCollection, CSensoryFrame);
 
-    double get_est_x() { return est_x; }
-    double get_est_y() { return est_y; }
-    double get_est_th() { return est_th; }
+    double get_est_x() { return est_x_; }
+    double get_est_y() { return est_y_; }
+    double get_est_th() { return est_th_; }
 
     bool get_map(CSimpleMap&);
 
 private:
-    static MapBuilder* unique_instance;
+    static MapBuilder* unique_instance_;
 
-    // Output rawlog:
-	CFileGZOutputStream  outputFile;
-
-	// Building map:
-	const char* OUT_DIR;
-
-	// config file
-	// ----------------------------------
-	unsigned int rawlog_offset;
-	string OUT_DIR_STD;
-	int LOG_FREQUENCY;
-	bool  SAVE_POSE_LOG;
-	bool  SAVE_3D_SCENE;
-	bool  CAMERA_3DSCENE_FOLLOWS_ROBOT;
-
-	bool 	SHOW_PROGRESS_3D_REAL_TIME;
-	int		SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS;
-
-	// log files:
-	// ----------------------------------
-	CFileOutputStream  f_log;
-	CFileOutputStream  f_path;
-	CFileOutputStream  f_pathOdo;
-
-	// Checks:
-	int	step;
-	string								str;
-	CSimpleMap							finalMap;
-	float								t_exec;
-	COccupancyGridMap2D::TEntropyInfo	entropy;
+	int step_;
 
 	// ICP-SLAM object:
-	CMetricMapBuilderICP map_builder_icp;
+	CMetricMapBuilderICP map_builder_icp_;
 
 	// Create 3D window if requested:
-	CDisplayWindow3DPtr	win3D;
+	CDisplayWindow3DPtr win3d_ptr_;
 
-    double est_x, est_y, est_th;
+    double est_x_, est_y_, est_th_;
 
 };
