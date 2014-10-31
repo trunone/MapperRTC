@@ -39,12 +39,6 @@ bool MapBuilder::InitMapping() {
     map_builder_icp_.ICP_options.minICPgoodnessToAccept  = 0.40;
     map_builder_icp_.ICP_options.matchAgainstTheGrid     = 0;
 
-    //map_builder_icp_.ICP_options.mapInitializers.options.occupancyGrid_count=0;
-    //map_builder_icp_.ICP_options.mapInitializers.options.gasGrid_count=0;
-    //map_builder_icp_.ICP_options.mapInitializers.options.landmarksMap_count=0;
-    //map_builder_icp_.ICP_options.mapInitializers.options.beaconMap_count=0;
-    //map_builder_icp_.ICP_options.mapInitializers.options.pointsMap_count=1;
-
     map_builder_icp_.ICP_options.mapInitializers.options.likelihoodMapSelection =
             CMultiMetricMap::TOptions::mapFuseAll;
 
@@ -90,7 +84,7 @@ bool MapBuilder::StartMapping(
     // Building map
 	map_builder_icp_.processActionObservation( action_collection, sensory_frame );
 
-	// Save a 3D scene view of the mapping process:
+    // Draw current robot postion
 	if (0==(step_ % LOG_FREQUENCY) || (SAVE_3D_SCENE || win3d_ptr_.present()))
 	{
 		CPose3D robotPose;
@@ -147,7 +141,7 @@ bool MapBuilder::StartMapping(
 			}
 		}
 
-		// Draw the robot path:
+		// Draw the path of the robot
 		CPose3DPDFPtr posePDF =  map_builder_icp_.getCurrentPoseEstimation();
 		CPose3D  curRobotPose;
 		posePDF->getMean(curRobotPose);
@@ -162,7 +156,7 @@ bool MapBuilder::StartMapping(
 			view_map->insert( obj );
 		}
 
-		// Show 3D?
+		// Show 3D map
 		if (win3d_ptr_)
 		{
 			opengl::COpenGLScenePtr &ptrScene = win3d_ptr_->get3DSceneAndLock();
@@ -170,16 +164,17 @@ bool MapBuilder::StartMapping(
 
 			win3d_ptr_->unlockAccess3DScene();
 
-			// Move camera:
+			// Move camera
 			win3d_ptr_->setCameraPointingToPoint( curRobotPose.x(),curRobotPose.y(),curRobotPose.z() );
 
-			// Update:
+			// Update screen
 			win3d_ptr_->forceRepaint();
 
 			sleep( SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS );
 		}
 	}
 
+    // Store the estimated result
     est_x_ = map_builder_icp_.getCurrentPoseEstimation()->getMeanVal().x();
     est_y_ = map_builder_icp_.getCurrentPoseEstimation()->getMeanVal().y();
     est_th_ = map_builder_icp_.getCurrentPoseEstimation()->getMeanVal().yaw();

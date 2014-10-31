@@ -142,17 +142,20 @@ RTC::ReturnCode_t Mapper::onExecute(RTC::UniqueId ec_id)
 	if(m_OdometryIn.isNew()){
 		m_OdometryIn.read();
 
+        // Record last pose
 		if(first_run_ == true){
             past_pose_ = m_Odometry.data;
 			first_run_ = false;
 		}
 
+        // Calculate the movement
 		double x = (m_Odometry.data.position.x-past_pose_.position.x)*cos(-past_pose_.heading)
             -(m_Odometry.data.position.y-past_pose_.position.y)*sin(-past_pose_.heading);
 		double y = (m_Odometry.data.position.x-past_pose_.position.x)*sin(-past_pose_.heading)
             +(m_Odometry.data.position.y-past_pose_.position.y)*cos(-past_pose_.heading);
 		double theta = m_Odometry.data.heading-past_pose_.heading;
 
+        // Set movement into Action Collection
 		CPose2D pos(x, y, theta);
 		CActionRobotMovement2D movement2d;
 		CActionRobotMovement2D::TMotionModelOptions options;
@@ -161,20 +164,25 @@ RTC::ReturnCode_t Mapper::onExecute(RTC::UniqueId ec_id)
 		action_collection.insert(movement2d);
 	}
 
-	// LRF
+	// Laser range finder data
 	if(m_RangeDataIn.isNew()){
 		m_RangeDataIn.read();
+
 		CObservation2DRangeScanPtr obs2d = CObservation2DRangeScan::Create();
+        // Set the range of angle
 		obs2d->aperture = m_Aperture * M_PIf / 180.0;
-		if(m_Direction == 1)
+		
+        if(m_Direction == 1)
 			obs2d->rightToLeft = true;
 		else
 			obs2d->rightToLeft = false;
-		//obs2d->maxRange = 40;
+
+        // Copy range data into MRPT range data format
 		obs2d->validRange.resize(m_RangeData.ranges.length());
 		obs2d->scan.resize(m_RangeData.ranges.length());
 		obs2d->timestamp = mrpt::system::getCurrentTime();
 		obs2d->scan.resize(m_RangeData.ranges.length());
+
 		for(unsigned int i=0; i<m_RangeData.ranges.length(); i++) {
 			obs2d->scan[i] = (float)m_RangeData.ranges[i];
 			obs2d->validRange[i] = 1;
@@ -189,8 +197,6 @@ RTC::ReturnCode_t Mapper::onExecute(RTC::UniqueId ec_id)
     m_EstPose.data.position.x = MapBuilder::get_instance()->get_est_x();
     m_EstPose.data.position.y = MapBuilder::get_instance()->get_est_y();
     m_EstPose.data.heading    = MapBuilder::get_instance()->get_est_th();
-    //m_debug ? printf("Current Position: (x, y, th) = (%f, %f, %f)",
-    //               x, y, th) : true;
     m_EstPoseOut.write();
 
   return RTC::RTC_OK;

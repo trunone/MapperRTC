@@ -29,8 +29,10 @@ SimpleMapSVC_impl::~SimpleMapSVC_impl()
 void SimpleMapSVC_impl::getMap(CORBA::String_out arg)
 {
     CSimpleMap map;
+    // Get the Simple Map of current map
     MapBuilder::get_instance()->get_map(map);
 
+    // Convert Simple Map into string
     arg = CORBA::string_dup(ObjectToString(&map).c_str());
 }
 
